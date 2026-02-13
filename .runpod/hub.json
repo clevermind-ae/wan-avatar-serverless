@@ -1,0 +1,16 @@
+{
+    "title": "Wan Avatar Replace",
+    "description": "Generate avatar idle videos by replacing a person in a driving video template with the user's face/body using Wan 2.2 Animate-14B in Replace mode.",
+    "type": "serverless",
+    "category": "video",
+
+    "config": {
+      "runsOn": "GPU",
+      "containerDiskInGb": 250,
+      "gpuCount": 1,
+      "gpuIds": "H100_SXM,H100_PCIE,H100_NVL",
+      "allowedCudaVersions": [
+        "12.8"
+      ]
+    }
+}
