@@ -118,7 +118,8 @@ def ensure_template(container_registry_auth_id: Optional[str]) -> str:
 
     # Stored on the template so endpoint updates do not need env patch support.
     env: Dict[str, str] = {
-        "RUNPOD_INIT_TIMEOUT": os.getenv("RUNPOD_INIT_TIMEOUT", "1800"),
+        # Phase B: cold starts may include 90GB+ model downloads.
+        "RUNPOD_INIT_TIMEOUT": os.getenv("RUNPOD_INIT_TIMEOUT", "7200"),
         "DOWNLOAD_MODELS_ON_START": os.getenv("DOWNLOAD_MODELS_ON_START", "true"),
         "COMFYUI_READY_TIMEOUT": os.getenv("COMFYUI_READY_TIMEOUT", "600"),
         "COMFYUI_USE_SAGE_ATTENTION": os.getenv("COMFYUI_USE_SAGE_ATTENTION", "false"),
@@ -184,7 +185,8 @@ def ensure_endpoint(template_id: str) -> Dict[str, str]:
     )
     gpu_type_ids = [x.strip() for x in gpu_type_ids_csv.split(",") if x.strip()]
 
-    execution_timeout_ms = int(os.getenv("RUNPOD_EXECUTION_TIMEOUT_MS", "1200000"))
+    # Phase B: allow enough time for model downloads + inference.
+    execution_timeout_ms = int(os.getenv("RUNPOD_EXECUTION_TIMEOUT_MS", "7200000"))
     idle_timeout_s = int(os.getenv("RUNPOD_IDLE_TIMEOUT_S", "5"))
     workers_min = int(os.getenv("RUNPOD_WORKERS_MIN", "0"))
     workers_max = int(os.getenv("RUNPOD_WORKERS_MAX", "1"))
