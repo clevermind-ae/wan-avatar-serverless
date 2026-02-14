@@ -145,11 +145,41 @@ def wait_for_completion(ws, prompt):
         continue
 
     history = get_history(prompt_id)[prompt_id]
-    for node_id in history["outputs"]:
-        node_output = history["outputs"][node_id]
-        if "gifs" in node_output:
-            for video in node_output["gifs"]:
-                return video["fullpath"]
+
+    def resolve_comfy_file(file_info):
+        # ComfyUI may return either an absolute path ("fullpath") or a tuple of
+        # (filename, subfolder, type). Handle both.
+        if not isinstance(file_info, dict):
+            return None
+
+        fullpath = file_info.get("fullpath")
+        if fullpath:
+            return fullpath
+
+        filename = file_info.get("filename")
+        if not filename:
+            return None
+        subfolder = file_info.get("subfolder") or ""
+        file_type = file_info.get("type") or "output"
+
+        if file_type == "temp":
+            root = "/ComfyUI/temp"
+        else:
+            root = "/ComfyUI/output"
+
+        return os.path.join(root, subfolder, filename)
+
+    outputs = history.get("outputs") or {}
+    for node_id, node_output in outputs.items():
+        if not isinstance(node_output, dict):
+            continue
+
+        # VHS_VideoCombine may return "videos" or "gifs" depending on format.
+        for key in ("videos", "gifs"):
+            for file_info in node_output.get(key, []) or []:
+                path = resolve_comfy_file(file_info)
+                if path and os.path.exists(path):
+                    return path
 
     return None
 
@@ -273,6 +303,7 @@ def handler(job):
         workflow["63"]["inputs"]["video"] = comfy_video_name
         workflow["63"]["inputs"]["force_rate"] = FPS
         workflow["30"]["inputs"]["frame_rate"] = FPS
+        workflow["30"]["inputs"]["save_output"] = True
         # "sageattn" requires the optional `sageattention` package. Default to SDPA for portability.
         workflow["22"]["inputs"]["attention_mode"] = os.getenv("WAN_ATTENTION_MODE", "sdpa")
         workflow["65"]["inputs"]["positive_prompt"] = job_input.get("prompt", POSITIVE_PROMPT)
