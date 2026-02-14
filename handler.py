@@ -209,6 +209,12 @@ def handler(job):
         else:
             minio_video_path = job_input.get("driving_video_path") or DEFAULT_DRIVING_VIDEO_PATH
             if minio_video_path:
+                # Accept either "object/key.mp4" or "bucket/object/key.mp4".
+                # The MinIO client is already scoped to MINIO_BUCKET.
+                prefix = f"{MINIO_BUCKET}/"
+                if minio_video_path.startswith(prefix):
+                    minio_video_path = minio_video_path[len(prefix):]
+                minio_video_path = minio_video_path.lstrip("/")
                 video_path = download_minio_object(
                     minio_video_path,
                     os.path.join(task_id, "driving_video.mp4"),
@@ -327,4 +333,5 @@ def handler(job):
                 pass
 
 
-runpod.serverless.start({"handler": handler})
+if os.getenv("RUNPOD_START_SERVERLESS", "true").lower() == "true":
+    runpod.serverless.start({"handler": handler})

@@ -1,0 +1,5 @@
+FROM dexsynccom/twin-avatar:wan
+
+# Debug image: keep the container alive so we can SSH in and run /entrypoint.sh manually.
+CMD ["bash", "-lc", "sleep infinity"]
+

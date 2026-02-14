@@ -46,39 +46,7 @@ RUN cd /ComfyUI/custom_nodes && \
 
 RUN pip install --upgrade onnxruntime-gpu==1.22
 
-# Download models — VAE, CLIP, text encoder, diffusion model
-RUN wget -q https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan2_1_VAE_bf16.safetensors \
-    -O /ComfyUI/models/vae/Wan2_1_VAE_bf16.safetensors
-RUN wget -q https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors \
-    -O /ComfyUI/models/clip_vision/clip_vision_h.safetensors
-RUN wget -q https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/umt5-xxl-enc-bf16.safetensors \
-    -O /ComfyUI/models/text_encoders/umt5-xxl-enc-bf16.safetensors
-RUN wget -q https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/Wan22Animate/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors \
-    -O /ComfyUI/models/diffusion_models/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors
-
-# Download LoRAs
-RUN wget -q https://huggingface.co/eddy1111111/lightx2v_it2v_adaptive_fusionv_1.safetensors/resolve/main/lightx2v_elite_it2v_animate_face.safetensors \
-    -O /ComfyUI/models/loras/lightx2v_elite_it2v_animate_face.safetensors
-RUN wget -q https://huggingface.co/eddy1111111/lightx2v_it2v_adaptive_fusionv_1.safetensors/resolve/main/WAN22_MoCap_fullbodyCOPY_ED.safetensors \
-    -O /ComfyUI/models/loras/WAN22_MoCap_fullbodyCOPY_ED.safetensors
-RUN wget -q https://huggingface.co/eddy1111111/lightx2v_it2v_adaptive_fusionv_1.safetensors/resolve/main/FullDynamic_Ultimate_Fusion_Elite.safetensors \
-    -O /ComfyUI/models/loras/FullDynamic_Ultimate_Fusion_Elite.safetensors
-RUN wget -q https://huggingface.co/eddy1111111/lightx2v_it2v_adaptive_fusionv_1.safetensors/resolve/main/Wan2.2-Fun-A14B-InP-Fusion-Elite.safetensors \
-    -O /ComfyUI/models/loras/Wan2.2-Fun-A14B-InP-Fusion-Elite.safetensors
-
-# Download detection models
-RUN mkdir -p /ComfyUI/models/detection
-RUN wget -q https://huggingface.co/Wan-AI/Wan2.2-Animate-14B/resolve/main/process_checkpoint/det/yolov10m.onnx \
-    -O /ComfyUI/models/detection/yolov10m.onnx
-RUN wget -q https://huggingface.co/Kijai/vitpose_comfy/resolve/main/onnx/vitpose_h_wholebody_model.onnx \
-    -O /ComfyUI/models/detection/vitpose_h_wholebody_model.onnx
-RUN wget -q https://huggingface.co/Kijai/vitpose_comfy/resolve/main/onnx/vitpose_h_wholebody_data.bin \
-    -O /ComfyUI/models/detection/vitpose_h_wholebody_data.bin
-
-# Pre-download SAM2 model to avoid cold-start download
-RUN mkdir -p /ComfyUI/models/sam2
-RUN wget -q https://huggingface.co/Kijai/sam2-safetensors/resolve/main/sam2.1_hiera_base_plus.safetensors \
-    -O /ComfyUI/models/sam2/sam2.1_hiera_base_plus.safetensors
+# Keep image lean: model files are fetched at container startup when missing.
 
 # Copy project files
 COPY handler.py /handler.py

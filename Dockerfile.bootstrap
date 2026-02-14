@@ -1,0 +1,19 @@
+FROM wlsdml1114/multitalk-base:1.7
+
+# Bootstrap/debug image: keep the container light so pods start quickly.
+# We'll install ComfyUI, custom nodes, and models at runtime via bootstrap_comfyui.sh.
+
+RUN pip install -U "huggingface_hub[hf_transfer]" && \
+    pip install runpod websocket-client minio
+
+COPY handler.py /handler.py
+COPY workflow_replace.json /workflow_replace.json
+COPY entrypoint.sh /entrypoint.sh
+COPY bootstrap_comfyui.sh /bootstrap_comfyui.sh
+COPY config.ini /config.ini
+COPY templates/ /templates/
+
+RUN chmod +x /entrypoint.sh /bootstrap_comfyui.sh
+
+CMD ["bash", "-lc", "sleep infinity"]
+
