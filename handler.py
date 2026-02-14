@@ -42,8 +42,20 @@ NEGATIVE_PROMPT = (
     "extra limbs, bad anatomy, ugly"
 )
 
-TEMPLATES_DIR = "/templates"
-WORKFLOW_PATH = "/workflow_replace.json"
+_REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# In the production Docker image we copy these to absolute paths at container root.
+# In debug/template pods we typically run from a git checkout under /workspace.
+TEMPLATES_DIR = os.getenv(
+    "TEMPLATES_DIR",
+    "/templates" if os.path.isdir("/templates") else os.path.join(_REPO_DIR, "templates"),
+)
+WORKFLOW_PATH = os.getenv(
+    "WORKFLOW_PATH",
+    "/workflow_replace.json"
+    if os.path.exists("/workflow_replace.json")
+    else os.path.join(_REPO_DIR, "workflow_replace.json"),
+)
 COMFY_INPUT_DIR = "/ComfyUI/input"
 BASE64_FALLBACK_MAX_MB = int(os.getenv("BASE64_FALLBACK_MAX_MB", "80"))
 
