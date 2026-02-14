@@ -1,4 +1,9 @@
 import os
+
+# These env vars must be set before importing huggingface_hub to reliably disable progress bars.
+os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+
 import shutil
 from dataclasses import dataclass
 
@@ -108,9 +113,4 @@ def download_models() -> None:
 
 
 if __name__ == "__main__":
-    # Enable hf_transfer if installed; otherwise hub uses its normal download path.
-    os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
-    # Reduce noisy progress bars in serverless logs.
-    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
     download_models()
-
