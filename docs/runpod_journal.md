@@ -14,6 +14,26 @@ Tested using RunPod template image `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2
 - Torch: 2.8.0 (template tag implies this)
 - ComfyUI runtime (cloned by bootstrap): v0.13.0 (observed in logs on 2026-02-14)
 
+## Serverless Findings (REST API, Custom Image)
+Deployed a queue-based serverless endpoint using a custom image:
+- Image: `dexsynccom/twin-avatar:wan-worker-20260214-2d62a28` (private Docker Hub)
+- Template id: `c9h032022j`
+- Endpoint id (invoke base): `b6bab5jxqhcydz` -> `https://api.runpod.ai/v2/b6bab5jxqhcydz`
+
+Notes:
+- Docker Hub private repo requires RunPod `containerRegistryAuthId` to pull.
+- REST `/v1/endpoints` returns a single `id` (used for both management and v2 invocation); there is no separate `endpointId`.
+- Cold starts can exceed defaults; set:
+  - Template env: `RUNPOD_INIT_TIMEOUT=7200`
+  - Endpoint: `executionTimeoutMs` high enough (example: `7200000`)
+
+Measured E2E execution time (serverless, including cold-start model fetches on the worker):
+- `jobs.png` + `video-conference-man-1.mp4`: `executionTime=611074ms` (10.2 min), output `e2e/jobs_man1/idle_20260214_060045.mp4`
+- `exec-woman.png` + `video-conference-woman.mp4`: `executionTime=618927ms` (10.3 min), output `e2e/execwoman_woman1/idle_20260214_061954.mp4`
+
+Validated outputs via `ffprobe`:
+- H.264 MP4, `1280x720`, `24/1` fps.
+
 ## Issues / Challenges
 
 ### 1) HuggingFace "hf_transfer" extra is not reliable
@@ -78,4 +98,3 @@ Fix:
   - runs workflow
   - validates output via `ffprobe` (24fps, 1280x720)
   - uploads to MinIO
-
