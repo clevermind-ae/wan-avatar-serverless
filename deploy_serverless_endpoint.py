@@ -194,10 +194,12 @@ def ensure_endpoint(template_id: str) -> Dict[str, str]:
 
     endpoints = _as_list(_req("GET", "/endpoints"))
     for ep in endpoints:
-        if ep.get("name") == endpoint_name:
+        name = ep.get("name") or ""
+        if name == endpoint_name or name == f"{endpoint_name} -fb" or name.startswith(endpoint_name):
             ep_id = ep.get("id")
-            endpoint_id = ep.get("endpointId")
-            if not ep_id or not endpoint_id:
+            # REST API uses a single `id` for both management and invocation (v2/<id>).
+            endpoint_id = ep_id
+            if not ep_id:
                 _die(f"Endpoint exists but missing ids: {ep}")
             # Best-effort update to point to the latest template.
             _req(
@@ -237,9 +239,10 @@ def ensure_endpoint(template_id: str) -> Dict[str, str]:
             "allowedCudaVersions": ["12.8"],
         },
     )
-    if not isinstance(created, dict) or not created.get("id") or not created.get("endpointId"):
+    # REST API returns only `id` (used for v2 invocation).
+    if not isinstance(created, dict) or not created.get("id"):
         _die(f"Unexpected endpoint create response: {created}")
-    return {"id": created["id"], "endpointId": created["endpointId"]}
+    return {"id": created["id"], "endpointId": created["id"]}
 
 
 def main() -> int:
