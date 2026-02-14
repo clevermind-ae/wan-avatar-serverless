@@ -1,4 +1,3 @@
-import base64
 import os
 import subprocess
 import sys
@@ -66,14 +65,11 @@ def main() -> int:
     # Ensure ComfyUI is up before calling the handler.
     wait_http("http://127.0.0.1:8188/", timeout_s=int(os.environ.get("COMFYUI_WAIT", "240")))
 
-    client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
-    img_bytes = client.get_object(bucket, image_key).read()
-
     job = {
         "input": {
             "user_id": "smoke",
             "avatar_id": "smoke",
-            "image_base64": base64.b64encode(img_bytes).decode("utf-8"),
+            "image_minio_path": image_key,
             "driving_video_path": driving_key,
         }
     }
@@ -85,6 +81,7 @@ def main() -> int:
         raise RuntimeError(f"No minio_key in result: {result}")
 
     out_path = "/tmp/smoke_idle.mp4"
+    client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
     client.fget_object(bucket, minio_key, out_path)
 
     props = ffprobe_props(out_path)
@@ -106,4 +103,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

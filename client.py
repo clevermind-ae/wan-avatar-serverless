@@ -5,6 +5,7 @@ Usage:
     python client.py --image photo.jpg
     python client.py --image photo.jpg --template idle-default
     python client.py --image-url https://example.com/photo.jpg --user-id user_123 --avatar-id avatar_456
+    python client.py --image-minio-path input-avatars/user.png --driving-video-path sitting-woman/video-conference-woman.mp4
 """
 
 import argparse
@@ -41,6 +42,7 @@ class WanAvatarClient:
     def generate(
         self,
         image_url: str = None,
+        image_minio_path: str = None,
         image_base64: str = None,
         image_path: str = None,
         template_id: str = None,
@@ -57,13 +59,15 @@ class WanAvatarClient:
 
         if image_url:
             payload["image_url"] = image_url
+        elif image_minio_path:
+            payload["image_minio_path"] = image_minio_path
         elif image_base64:
             payload["image_base64"] = image_base64
         elif image_path:
             with open(image_path, "rb") as f:
                 payload["image_base64"] = base64.b64encode(f.read()).decode("utf-8")
         else:
-            raise ValueError("Provide image_url, image_base64, or image_path")
+            raise ValueError("Provide image_url, image_minio_path, image_base64, or image_path")
 
         if template_id:
             payload["template_id"] = template_id
@@ -133,6 +137,7 @@ def main():
     parser = argparse.ArgumentParser(description="Wan Avatar Replace Client")
     parser.add_argument("--image", help="Local image file path")
     parser.add_argument("--image-url", help="Image URL")
+    parser.add_argument("--image-minio-path", help="Image object key in MinIO bucket")
     parser.add_argument("--template", help="Template ID (expects /templates/<template>.mp4 in worker)")
     parser.add_argument("--driving-video-url", help="Driving video URL")
     parser.add_argument("--driving-video-path", help="Driving video object key in MinIO bucket")
@@ -151,6 +156,7 @@ def main():
 
     result = client.generate(
         image_url=args.image_url,
+        image_minio_path=args.image_minio_path,
         image_path=args.image,
         template_id=args.template,
         driving_video_url=args.driving_video_url,

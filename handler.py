@@ -219,6 +219,7 @@ def handler(job):
 
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     comfy_input_files = []
+    output_path = None
     template_id = job_input.get("template_id")
     try:
         # --- Resolve image input ---
@@ -228,13 +229,25 @@ def handler(job):
                 job_input["image_url"],
                 os.path.join(task_id, "input_image.jpg"),
             )
+        elif "image_minio_path" in job_input:
+            minio_image_path = job_input["image_minio_path"]
+            if minio_image_path:
+                # Accept either "object/key.png" or "bucket/object/key.png".
+                prefix = f"{MINIO_BUCKET}/"
+                if minio_image_path.startswith(prefix):
+                    minio_image_path = minio_image_path[len(prefix):]
+                minio_image_path = minio_image_path.lstrip("/")
+                image_path = download_minio_object(
+                    minio_image_path,
+                    os.path.join(task_id, "input_image.png"),
+                )
         elif "image_base64" in job_input:
             image_path = save_base64(
                 job_input["image_base64"],
                 os.path.join(task_id, "input_image.jpg"),
             )
         else:
-            return {"error": "image_url or image_base64 is required"}
+            return {"error": "Provide one of: image_url, image_minio_path, image_base64"}
 
         # --- Resolve driving video ---
         video_path = None
@@ -374,6 +387,12 @@ def handler(job):
         for comfy_input_file in comfy_input_files:
             try:
                 os.remove(comfy_input_file)
+            except OSError:
+                pass
+        if output_path:
+            try:
+                if os.path.isfile(output_path):
+                    os.remove(output_path)
             except OSError:
                 pass
 
