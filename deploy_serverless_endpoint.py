@@ -174,11 +174,9 @@ def ensure_endpoint(template_id: str) -> Dict[str, str]:
         "RUNPOD_GPU_TYPE_IDS",
         ",".join(
             [
-                "NVIDIA L40S",
                 "NVIDIA RTX 6000 Ada Generation",
+                "NVIDIA L40S",
                 "NVIDIA RTX A6000",
-                "NVIDIA A40",
-                "NVIDIA RTX PRO 6000 Blackwell Server Edition",
                 "NVIDIA H100 80GB HBM3",
             ]
         ),
@@ -192,7 +190,8 @@ def ensure_endpoint(template_id: str) -> Dict[str, str]:
     workers_max = int(os.getenv("RUNPOD_WORKERS_MAX", "1"))
     scaler_type = os.getenv("RUNPOD_SCALER_TYPE", "QUEUE_DELAY")
     scaler_value = int(os.getenv("RUNPOD_SCALER_VALUE", "4"))
-    flashboot = os.getenv("RUNPOD_FLASHBOOT", "true").lower() == "true"
+    # Default to false to avoid keeping standby workers warm while iterating.
+    flashboot = os.getenv("RUNPOD_FLASHBOOT", "false").lower() == "true"
 
     endpoints = _as_list(_req("GET", "/endpoints"))
     for ep in endpoints:
