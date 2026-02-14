@@ -273,6 +273,8 @@ def handler(job):
         workflow["63"]["inputs"]["video"] = comfy_video_name
         workflow["63"]["inputs"]["force_rate"] = FPS
         workflow["30"]["inputs"]["frame_rate"] = FPS
+        # "sageattn" requires the optional `sageattention` package. Default to SDPA for portability.
+        workflow["22"]["inputs"]["attention_mode"] = os.getenv("WAN_ATTENTION_MODE", "sdpa")
         workflow["65"]["inputs"]["positive_prompt"] = job_input.get("prompt", POSITIVE_PROMPT)
         workflow["65"]["inputs"]["negative_prompt"] = job_input.get("negative_prompt", NEGATIVE_PROMPT)
         workflow["27"]["inputs"]["seed"] = seed
