@@ -98,6 +98,12 @@ def download_models() -> None:
             filename="sam2.1_hiera_base_plus.safetensors",
             dest_path="/ComfyUI/models/sam2/sam2.1_hiera_base_plus.safetensors",
         ),
+        # Some nodes auto-download the fp16 variant if missing; prefetch to avoid surprises at runtime.
+        ModelSpec(
+            repo_id="Kijai/sam2-safetensors",
+            filename="sam2.1_hiera_base_plus-fp16.safetensors",
+            dest_path="/ComfyUI/models/sam2/sam2.1_hiera_base_plus-fp16.safetensors",
+        ),
     ]
 
     for spec in specs:
