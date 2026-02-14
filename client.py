@@ -6,6 +6,7 @@ Usage:
     python client.py --image photo.jpg --template idle-default
     python client.py --image-url https://example.com/photo.jpg --user-id user_123 --avatar-id avatar_456
     python client.py --image-minio-path input-avatars/user.png --driving-video-path sitting-woman/video-conference-woman.mp4
+    python client.py --image-minio-path user-avatars/<user>/<avatar>/source.png --driving-video-path templates/wan/sitting-woman.mp4 --output-video-key user-avatars/<user>/<avatar>/idle.mp4
 """
 
 import argparse
@@ -51,6 +52,10 @@ class WanAvatarClient:
         user_id: str = None,
         avatar_id: str = None,
         prompt: str = None,
+        negative_prompt: str = None,
+        output_video_key: str = None,
+        output_thumbnail_key: str = None,
+        output_video_prefix: str = None,
         poll_interval: int = 10,
         max_wait: int = 900,
     ) -> dict:
@@ -82,6 +87,16 @@ class WanAvatarClient:
             payload["avatar_id"] = avatar_id
         if prompt:
             payload["prompt"] = prompt
+        if negative_prompt:
+            payload["negative_prompt"] = negative_prompt
+
+        # Output control (recommended for platform integrations)
+        if output_video_key:
+            payload["output_video_key"] = output_video_key
+        if output_thumbnail_key:
+            payload["output_thumbnail_key"] = output_thumbnail_key
+        if output_video_prefix:
+            payload["output_video_prefix"] = output_video_prefix
 
         # Submit job
         resp = requests.post(
@@ -144,6 +159,10 @@ def main():
     parser.add_argument("--user-id", help="User ID for MinIO path")
     parser.add_argument("--avatar-id", help="Avatar ID for MinIO path")
     parser.add_argument("--prompt", help="Custom positive prompt")
+    parser.add_argument("--negative-prompt", help="Custom negative prompt")
+    parser.add_argument("--output-video-key", help="MinIO key for the generated MP4 (recommended)")
+    parser.add_argument("--output-thumbnail-key", help="MinIO key for an optional generated JPG thumbnail")
+    parser.add_argument("--output-video-prefix", help="MinIO key prefix for output (used if output-video-key not set)")
     parser.add_argument("--output", default="output.mp4", help="Output file path")
     parser.add_argument("--endpoint-id", help="RunPod endpoint ID")
     parser.add_argument("--api-key", help="RunPod API key")
@@ -164,6 +183,10 @@ def main():
         user_id=args.user_id,
         avatar_id=args.avatar_id,
         prompt=args.prompt,
+        negative_prompt=args.negative_prompt,
+        output_video_key=args.output_video_key,
+        output_thumbnail_key=args.output_thumbnail_key,
+        output_video_prefix=args.output_video_prefix,
     )
 
     print(f"\nResult: {json.dumps({k: v[:80] + '...' if isinstance(v, str) and len(v) > 80 else v for k, v in result.items()}, indent=2)}")

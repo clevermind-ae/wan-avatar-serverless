@@ -9,6 +9,7 @@ import urllib.request
 import time
 import random
 import shutil
+import subprocess
 from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
@@ -58,6 +59,52 @@ WORKFLOW_PATH = os.getenv(
 )
 COMFY_INPUT_DIR = "/ComfyUI/input"
 BASE64_FALLBACK_MAX_MB = int(os.getenv("BASE64_FALLBACK_MAX_MB", "80"))
+THUMBNAIL_SIZE = int(os.getenv("THUMBNAIL_SIZE", "512"))
+
+
+def _sanitize_minio_key(key: str) -> str:
+    key = (key or "").strip()
+    key = key.lstrip("/")
+    # Avoid accidental "bucket/key" in object_name (MinIO client is bucket-scoped).
+    prefix = f"{MINIO_BUCKET}/"
+    if key.startswith(prefix):
+        key = key[len(prefix):]
+    return key
+
+
+def _generate_thumbnail(video_path: str, thumbnail_path: str) -> None:
+    """
+    Best-effort thumbnail extraction from a generated MP4.
+
+    We intentionally don't hard-fail the whole job if thumbnail extraction fails.
+    """
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError("ffmpeg not found in container")
+
+    # Grab a frame shortly after start to avoid black first frames.
+    # Keep it small for fast upload + UI previews.
+    vf = (
+        f"scale={THUMBNAIL_SIZE}:{THUMBNAIL_SIZE}:"
+        "force_original_aspect_ratio=decrease,"
+        f"pad={THUMBNAIL_SIZE}:{THUMBNAIL_SIZE}:(ow-iw)/2:(oh-ih)/2"
+    )
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-ss",
+        "0.15",
+        "-i",
+        video_path,
+        "-vf",
+        vf,
+        "-frames:v",
+        "1",
+        thumbnail_path,
+    ]
+    subprocess.run(cmd, check=True)
 
 
 def get_minio_client():
@@ -109,7 +156,7 @@ def download_minio_object(object_name, output_path):
     """Download an object from MinIO bucket to a local path."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     client = get_minio_client()
-    client.fget_object(MINIO_BUCKET, object_name, output_path)
+    client.fget_object(MINIO_BUCKET, _sanitize_minio_key(object_name), output_path)
     logger.info(f"Downloaded MinIO object {MINIO_BUCKET}/{object_name} -> {output_path}")
     return output_path
 
@@ -230,13 +277,8 @@ def handler(job):
                 os.path.join(task_id, "input_image.jpg"),
             )
         elif "image_minio_path" in job_input:
-            minio_image_path = job_input["image_minio_path"]
+            minio_image_path = _sanitize_minio_key(job_input["image_minio_path"])
             if minio_image_path:
-                # Accept either "object/key.png" or "bucket/object/key.png".
-                prefix = f"{MINIO_BUCKET}/"
-                if minio_image_path.startswith(prefix):
-                    minio_image_path = minio_image_path[len(prefix):]
-                minio_image_path = minio_image_path.lstrip("/")
                 image_path = download_minio_object(
                     minio_image_path,
                     os.path.join(task_id, "input_image.png"),
@@ -262,14 +304,8 @@ def handler(job):
                 os.path.join(task_id, "driving_video.mp4"),
             )
         else:
-            minio_video_path = job_input.get("driving_video_path") or DEFAULT_DRIVING_VIDEO_PATH
+            minio_video_path = _sanitize_minio_key(job_input.get("driving_video_path") or DEFAULT_DRIVING_VIDEO_PATH)
             if minio_video_path:
-                # Accept either "object/key.mp4" or "bucket/object/key.mp4".
-                # The MinIO client is already scoped to MINIO_BUCKET.
-                prefix = f"{MINIO_BUCKET}/"
-                if minio_video_path.startswith(prefix):
-                    minio_video_path = minio_video_path[len(prefix):]
-                minio_video_path = minio_video_path.lstrip("/")
                 video_path = download_minio_object(
                     minio_video_path,
                     os.path.join(task_id, "driving_video.mp4"),
@@ -343,14 +379,38 @@ def handler(job):
         user_id = job_input.get("user_id", "unknown")
         avatar_id = job_input.get("avatar_id", uuid.uuid4().hex[:8])
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        minio_key = f"{user_id}/{avatar_id}/idle_{timestamp}.mp4"
+
+        output_video_key = job_input.get("output_video_key") or job_input.get("output_key")
+        output_video_prefix = job_input.get("output_video_prefix") or job_input.get("output_prefix")
+        if output_video_key:
+            minio_key = _sanitize_minio_key(str(output_video_key))
+        elif output_video_prefix:
+            output_video_prefix = _sanitize_minio_key(str(output_video_prefix)).rstrip("/")
+            minio_key = f"{output_video_prefix}/idle_{timestamp}.mp4"
+        else:
+            minio_key = f"{user_id}/{avatar_id}/idle_{timestamp}.mp4"
+
+        output_thumbnail_key = job_input.get("output_thumbnail_key") or job_input.get("thumbnail_key")
+        output_thumbnail_key = _sanitize_minio_key(str(output_thumbnail_key)) if output_thumbnail_key else None
 
         try:
             presigned_url = upload_to_minio(output_path, minio_key)
             logger.info(f"Uploaded to MinIO: {minio_key}")
+
+            thumbnail_url = None
+            if output_thumbnail_key:
+                try:
+                    thumb_path = os.path.join(task_id, "thumb.jpg")
+                    _generate_thumbnail(output_path, thumb_path)
+                    thumbnail_url = upload_to_minio(thumb_path, output_thumbnail_key)
+                except Exception as e:
+                    logger.warning(f"Thumbnail generation/upload skipped: {e}")
+
             return {
                 "minio_key": minio_key,
                 "video_url": presigned_url,
+                "thumbnail_key": output_thumbnail_key,
+                "thumbnail_url": thumbnail_url,
                 "seed": seed,
                 "template_id": template_id,
                 "fps": FPS,
