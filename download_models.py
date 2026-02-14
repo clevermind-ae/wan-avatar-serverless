@@ -22,14 +22,17 @@ def _link_or_copy(src: str, dest: str) -> None:
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     if os.path.exists(dest) and os.path.getsize(dest) > 0:
         return
+    # huggingface_hub may return a symlink inside the snapshot; ComfyUI model discovery
+    # can reject broken links. Resolve to the underlying blob file before linking/copying.
+    src_real = os.path.realpath(src)
     tmp = dest + ".tmp"
     if os.path.exists(tmp):
         os.remove(tmp)
     try:
         # Hardlink avoids double disk usage if cache + dest on same filesystem.
-        os.link(src, tmp)
+        os.link(src_real, tmp)
     except OSError:
-        shutil.copy2(src, tmp)
+        shutil.copy2(src_real, tmp)
     os.replace(tmp, dest)
 
 
