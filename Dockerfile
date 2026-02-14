@@ -1,7 +1,10 @@
 FROM wlsdml1114/multitalk-base:1.7 as runtime
 
-RUN pip install -U "huggingface_hub[hf_transfer]"
-RUN pip install runpod websocket-client minio
+ENV HF_HUB_ENABLE_HF_TRANSFER=1 \
+    HF_HUB_DISABLE_PROGRESS_BARS=1
+
+COPY requirements.txt /requirements.txt
+RUN pip install -U pip && pip install -r /requirements.txt
 
 WORKDIR /
 
@@ -50,13 +53,14 @@ RUN pip install --upgrade onnxruntime-gpu==1.22
 
 # Copy project files
 COPY handler.py /handler.py
+COPY download_models.py /download_models.py
 COPY workflow_replace.json /workflow_replace.json
 COPY entrypoint.sh /entrypoint.sh
 COPY config.ini /config.ini
 COPY templates/ /templates/
 
-RUN mkdir -p /ComfyUI/user/default/ComfyUI-Manager
-COPY config.ini /ComfyUI/user/default/ComfyUI-Manager/config.ini
+RUN mkdir -p /ComfyUI/user/__manager
+COPY config.ini /ComfyUI/user/__manager/config.ini
 RUN chmod +x /entrypoint.sh
 
 CMD ["/entrypoint.sh"]

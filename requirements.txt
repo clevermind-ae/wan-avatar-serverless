@@ -1,0 +1,5 @@
+runpod==1.8.1
+websocket-client==1.9.0
+minio==7.2.20
+huggingface_hub>=0.26.0
+hf-transfer>=0.1.9

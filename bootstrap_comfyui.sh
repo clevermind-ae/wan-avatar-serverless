@@ -21,6 +21,11 @@ fi
 echo "Installing ComfyUI requirements..."
 python3 -m pip install -r /ComfyUI/requirements.txt
 
+if [ -f /workspace/wan-avatar-serverless/requirements.txt ]; then
+  echo "Installing wan-avatar-serverless runtime requirements..."
+  python3 -m pip install -r /workspace/wan-avatar-serverless/requirements.txt
+fi
+
 mkdir -p /ComfyUI/custom_nodes
 cd /ComfyUI/custom_nodes
 
@@ -30,7 +35,8 @@ clone_or_update() {
   if [ -d "$dir/.git" ]; then
     echo "Updating $dir..."
     git -C "$dir" fetch --all -p
-    git -C "$dir" reset --hard origin/HEAD || true
+    # Avoid depending on origin/HEAD being set; just fast-forward the current branch when possible.
+    git -C "$dir" pull --ff-only || true
   else
     echo "Cloning $dir..."
     git clone "$url" "$dir"
@@ -66,8 +72,7 @@ fi
 echo "Pinning onnxruntime-gpu==1.22.0 (as in Dockerfile)..."
 python3 -m pip install --upgrade onnxruntime-gpu==1.22.0
 
-mkdir -p /ComfyUI/user/default/ComfyUI-Manager
-cp -f /config.ini /ComfyUI/user/default/ComfyUI-Manager/config.ini
+mkdir -p /ComfyUI/user/__manager
+cp -f /config.ini /ComfyUI/user/__manager/config.ini
 
 echo "Bootstrap complete."
-
